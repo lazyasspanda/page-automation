@@ -4,7 +4,7 @@
 // ==UserScript==
 // @name         CMS Page Builder Automation - Fixed v5
 // @namespace    http://tampermonkey.net/
-// @version      5.0
+// @version      5.1
 // @description  Automate bulk page creation - Fixed sidebar & section handling
 // @match        https://cms.dealeron.com/dash/dist/cms/*
 // @grant        GM_getValue
