@@ -4,7 +4,7 @@
 // ==UserScript==
 // @name         CMS Page Builder Automation - Fixed v5
 // @namespace    http://tampermonkey.net/
-// @version      5.1
+// @version      5.0
 // @description  Automate bulk page creation - Fixed sidebar & section handling
 // @match        https://cms.dealeron.com/dash/dist/cms/*
 // @grant        GM_getValue
@@ -12,8 +12,10 @@
 // @grant        GM_notification
 // @grant        GM_xmlhttpRequest
 // @grant        GM_openInTab
-// @updateURL    https://github.com/lazyasspanda/page-automation/raw/refs/heads/main/CMS%20Page%20Builder%20Automation.user.js
-// @downloadURL  https://github.com/lazyasspanda/page-automation/raw/refs/heads/main/CMS%20Page%20Builder%20Automation.user.js
+// @connect      https://github.com
+// @connect      raw.githubusercontent.com
+// @updateURL    https://raw.githubusercontent.com/lazyasspanda/page-automation/main/CMS%20Page%20Builder%20Automation.user.js
+// @downloadURL  https://raw.githubusercontent.com/lazyasspanda/page-automation/main/CMS%20Page%20Builder%20Automation.user.js
 // @homepageURL  https://github.com/lazyasspanda/page-automation
 // ==/UserScript==
 // ========================================================================
@@ -23,7 +25,7 @@
 // Update checker configuration
 const UPDATE_CONFIG = {
     CURRENT_VERSION: '5.1',
-    GITHUB_URL: 'https://github.com/lazyasspanda/page-automation/raw/refs/heads/main/CMS%20Page%20Builder%20Automation.user.js',
+    GITHUB_URL: 'https://raw.githubusercontent.com/lazyasspanda/page-automation/main/CMS%20Page%20Builder%20Automation.user.js',
     CHECK_INTERVAL: 24 * 60 * 60 * 1000, // Check every 24 hours
     SUPPRESS_AFTER_UPDATE_MS: 10 * 60 * 1000 // Suppress for 10 minutes after clicking Update
 };
