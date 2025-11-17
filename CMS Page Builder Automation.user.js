@@ -7,7 +7,14 @@
 // @version      5.1
 // @description  Automate bulk page creation - Fixed sidebar & section handling
 // @match        https://cms.dealeron.com/dash/dist/cms/*
-// @grant        none
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @grant        GM_notification
+// @grant        GM_xmlhttpRequest
+// @grant        GM_openInTab
+// @updateURL    https://github.com/lazyasspanda/page-automation/raw/refs/heads/main/CMS%20Page%20Builder%20Automation.user.js
+// @downloadURL  https://github.com/lazyasspanda/page-automation/raw/refs/heads/main/CMS%20Page%20Builder%20Automation.user.js
+// @homepageURL  https://github.com/lazyasspanda/page-automation
 // ==/UserScript==
 // ========================================================================
 // SECTION 0A: UPDATE CHECKING CONFIGURATION
