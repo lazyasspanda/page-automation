@@ -4,11 +4,115 @@
 // ==UserScript==
 // @name         CMS Page Builder Automation - Fixed v5
 // @namespace    http://tampermonkey.net/
-// @version      5.0
+// @version      5.1
 // @description  Automate bulk page creation - Fixed sidebar & section handling
 // @match        https://cms.dealeron.com/dash/dist/cms/*
 // @grant        none
 // ==/UserScript==
+// ========================================================================
+// SECTION 0A: UPDATE CHECKING CONFIGURATION
+// ========================================================================
+
+// Update checker configuration
+const UPDATE_CONFIG = {
+    CURRENT_VERSION: '5.1',
+    GITHUB_URL: 'https://github.com/lazyasspanda/page-automation/raw/refs/heads/main/CMS%20Page%20Builder%20Automation.user.js',
+    CHECK_INTERVAL: 24 * 60 * 60 * 1000, // Check every 24 hours
+    SUPPRESS_AFTER_UPDATE_MS: 10 * 60 * 1000 // Suppress for 10 minutes after clicking Update
+};
+
+/**
+ * Check for script updates from GitHub
+ * Compares current version with GitHub version
+ */
+function checkForUpdates() {
+    const checkBtn = document.getElementById('checkUpdatesBtn');
+    if (!checkBtn) return;
+
+    checkBtn.style.opacity = '0.6';
+    checkBtn.innerHTML = '⟳ Checking...';
+
+    fetch(UPDATE_CONFIG.GITHUB_URL + '?t=' + Date.now())
+        .then(response => response.text())
+        .then(scriptContent => {
+            checkBtn.style.opacity = '1';
+
+            // Extract version from script
+            const match = scriptContent.match(/@version\s+([0-9.]+)/);
+            const latestVersion = match ? match[1] : null;
+
+            console.log(`[Update] Current: v${UPDATE_CONFIG.CURRENT_VERSION}, GitHub: v${latestVersion}`);
+
+            if (latestVersion && latestVersion !== UPDATE_CONFIG.CURRENT_VERSION) {
+                // UPDATE AVAILABLE
+                console.log(`[Update] ✓ New version ${latestVersion} available!`);
+                checkBtn.innerHTML = `✓ Update Available: v${latestVersion}`;
+                checkBtn.style.background = '#28a745';
+                checkBtn.style.cursor = 'pointer';
+                checkBtn.setAttribute('data-update-ready', 'true');
+
+                alert(`[✓] Update Available!\n\nCurrent: v${UPDATE_CONFIG.CURRENT_VERSION}\nLatest: v${latestVersion}\n\nClick the button again to open the update link.`);
+            } else {
+                // NO UPDATE NEEDED
+                console.log(`[Update] ✓ Already up to date (v${UPDATE_CONFIG.CURRENT_VERSION})`);
+                checkBtn.innerHTML = '✓ No Updates Available';
+                checkBtn.style.background = '#27ae60';
+                checkBtn.style.cursor = 'default';
+                checkBtn.setAttribute('data-update-ready', 'false');
+
+                alert(`[✓] You're up to date!\n\nVersion: v${UPDATE_CONFIG.CURRENT_VERSION}`);
+
+                // Reset after 3 seconds
+                setTimeout(() => {
+                    checkBtn.innerHTML = '⟳ Check for Updates';
+                    checkBtn.style.background = '#6c757d';
+                    checkBtn.style.cursor = 'pointer';
+                    checkBtn.removeAttribute('data-update-ready');
+                }, 3000);
+            }
+        })
+        .catch(err => {
+            checkBtn.style.opacity = '1';
+            console.log('[Update] Check failed:', err);
+            checkBtn.innerHTML = '✗ Check Failed';
+            checkBtn.style.background = '#dc3545';
+            checkBtn.setAttribute('data-update-ready', 'false');
+
+            alert('[✗] Update check failed!\n\nPlease try again later.');
+
+            // Reset after 3 seconds
+            setTimeout(() => {
+                checkBtn.innerHTML = '⟳ Check for Updates';
+                checkBtn.style.background = '#6c757d';
+                checkBtn.removeAttribute('data-update-ready');
+            }, 3000);
+        });
+}
+
+/**
+ * Auto-check for updates on script load (once per 24 hours)
+ */
+function autoCheckForUpdates() {
+    const lastCheckTime = localStorage.getItem('pageBuilderLastUpdateCheck');
+    const now = Date.now();
+
+    if (!lastCheckTime || (now - parseInt(lastCheckTime)) > UPDATE_CONFIG.CHECK_INTERVAL) {
+        console.log('[Update] Running auto-check for updates');
+        localStorage.setItem('pageBuilderLastUpdateCheck', now.toString());
+        // Silently check without showing UI
+        fetch(UPDATE_CONFIG.GITHUB_URL + '?t=' + Date.now())
+            .then(response => response.text())
+            .then(scriptContent => {
+                const match = scriptContent.match(/@version\s+([0-9.]+)/);
+                const latestVersion = match ? match[1] : null;
+                if (latestVersion && latestVersion !== UPDATE_CONFIG.CURRENT_VERSION) {
+                    console.log(`[Update] New version available: v${latestVersion}`);
+                    localStorage.setItem('pageBuilderUpdateAvailable', latestVersion);
+                }
+            })
+            .catch(err => console.log('[Update] Auto-check failed:', err));
+    }
+}
 
 (function() {
     'use strict';
@@ -187,6 +291,29 @@ const styles = `
         background-color: #ccc;
         cursor: not-allowed;
     }
+            #checkUpdatesBtn {
+        background-color: #6c757d;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 13px;
+        font-weight: bold;
+        cursor: pointer;
+        margin-right: 10px;
+        transition: all 0.3s;
+    }
+
+    #checkUpdatesBtn:hover {
+        background-color: #5a6268;
+        transform: translateY(-2px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    #checkUpdatesBtn:active {
+        transform: translateY(0);
+    }
+
 `;
 
 // Inject CSS styles into document
@@ -223,11 +350,13 @@ const modalHTML = `
 
                 <div id="progressLog"></div>
             </div>
-            <div class="modal-footer">
+                        <div class="modal-footer">
+                <button id="checkUpdatesBtn" class="btn" style="background-color: #6c757d; color: white; padding: 8px 12px; border-radius: 4px; font-size: 13px; margin-right: 10px; cursor: pointer; border: none;">⟳ Check for Updates</button>
                 <button id="previewDataBtn" class="btn btn-info">Preview Data</button>
                 <button id="startBulkProcessBtn" class="btn btn-success" disabled>Start Automation</button>
                 <button id="cancelProcessBtn" class="btn btn-default">Cancel</button>
             </div>
+
         </div>
     </div>
     <div class="stop-button-container">
@@ -373,6 +502,21 @@ const modalHTML = `
             document.getElementById('previewDataBtn').addEventListener('click', previewData);
             document.getElementById('startBulkProcessBtn').addEventListener('click', startBulkProcess);
             document.getElementById('stopProcessBtn').addEventListener('click', stopProcess);
+                        // Update check button listener
+            document.getElementById('checkUpdatesBtn').addEventListener('click', function() {
+                const btn = document.getElementById('checkUpdatesBtn');
+
+                // If update is ready, open the link
+                if (btn.getAttribute('data-update-ready') === 'true') {
+                    console.log('[Update] Opening update link');
+                    window.open(UPDATE_CONFIG.GITHUB_URL, '_blank');
+                    return;
+                }
+
+                // Otherwise, perform manual check
+                checkForUpdates();
+            });
+
         }
     }
 
@@ -932,5 +1076,8 @@ async function startBulkProcess() {
     window.addEventListener('hashchange', function() {
         setTimeout(addPageBuilderButton, 500);
     });
+     // Auto-check for updates on script load
+    autoCheckForUpdates();
+
 
 })();
