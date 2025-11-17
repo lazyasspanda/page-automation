@@ -1,142 +1,140 @@
 // ============================================================================
-// SECTION 1: HEADER & CONFIGURATION
+// SECTION 1: HEADER & CONFIGURATION (FIXED)
 // ============================================================================
 // ==UserScript==
-// @name         CMS Page Builder Automation - Fixed v5
+// @name         CMS Page Builder Automation - Multi-Section
 // @namespace    http://tampermonkey.net/
 // @version      5.1
-// @description  Automate bulk page creation - Fixed sidebar & section handling
+// @description  Automate bulk page creation - Multi-section with auto-updates
+// @author       Page Builder Team
 // @match        https://cms.dealeron.com/dash/dist/cms/*
-// @grant        GM_getValue
-// @grant        GM_setValue
-// @grant        GM_notification
-// @grant        GM_xmlhttpRequest
-// @grant        GM_openInTab
-// @connect      https://github.com
+// @grant        none
 // @connect      raw.githubusercontent.com
 // @updateURL    https://raw.githubusercontent.com/lazyasspanda/page-automation/main/CMS%20Page%20Builder%20Automation.user.js
 // @downloadURL  https://raw.githubusercontent.com/lazyasspanda/page-automation/main/CMS%20Page%20Builder%20Automation.user.js
 // @homepageURL  https://github.com/lazyasspanda/page-automation
 // ==/UserScript==
-// ========================================================================
-// SECTION 0A: UPDATE CHECKING CONFIGURATION
-// ========================================================================
 
-// Update checker configuration
-const UPDATE_CONFIG = {
-    CURRENT_VERSION: '5.1',
-    GITHUB_URL: 'https://raw.githubusercontent.com/lazyasspanda/page-automation/main/CMS%20Page%20Builder%20Automation.user.js',
-    CHECK_INTERVAL: 24 * 60 * 60 * 1000, // Check every 24 hours
-    SUPPRESS_AFTER_UPDATE_MS: 10 * 60 * 1000 // Suppress for 10 minutes after clicking Update
-};
+(function() {
+    'use strict';
 
-/**
- * Check for script updates from GitHub
- * Compares current version with GitHub version
- */
-function checkForUpdates() {
-    const checkBtn = document.getElementById('checkUpdatesBtn');
-    if (!checkBtn) return;
+    // ====================================================================
+    // SECTION 0A: UPDATE CHECKING CONFIGURATION
+    // ====================================================================
+    
+    // Update checker configuration
+    const UPDATE_CONFIG = {
+        CURRENT_VERSION: '5.1',
+        GITHUB_URL: 'https://raw.githubusercontent.com/lazyasspanda/page-automation/main/CMS%20Page%20Builder%20Automation.user.js',
+        CHECK_INTERVAL: 24 * 60 * 60 * 1000, // Check every 24 hours
+        SUPPRESS_AFTER_UPDATE_MS: 10 * 60 * 1000 // Suppress for 10 minutes after clicking Update
+    };
 
-    checkBtn.style.opacity = '0.6';
-    checkBtn.innerHTML = '⟳ Checking...';
-
-    fetch(UPDATE_CONFIG.GITHUB_URL + '?t=' + Date.now())
-        .then(response => response.text())
-        .then(scriptContent => {
-            checkBtn.style.opacity = '1';
-
-            // Extract version from script
-            const match = scriptContent.match(/@version\s+([0-9.]+)/);
-            const latestVersion = match ? match[1] : null;
-
-            console.log(`[Update] Current: v${UPDATE_CONFIG.CURRENT_VERSION}, GitHub: v${latestVersion}`);
-
-            if (latestVersion && latestVersion !== UPDATE_CONFIG.CURRENT_VERSION) {
-                // UPDATE AVAILABLE
-                console.log(`[Update] ✓ New version ${latestVersion} available!`);
-                checkBtn.innerHTML = `✓ Update Available: v${latestVersion}`;
-                checkBtn.style.background = '#28a745';
-                checkBtn.style.cursor = 'pointer';
-                checkBtn.setAttribute('data-update-ready', 'true');
-
-                alert(`[✓] Update Available!\n\nCurrent: v${UPDATE_CONFIG.CURRENT_VERSION}\nLatest: v${latestVersion}\n\nClick the button again to open the update link.`);
-            } else {
-                // NO UPDATE NEEDED
-                console.log(`[Update] ✓ Already up to date (v${UPDATE_CONFIG.CURRENT_VERSION})`);
-                checkBtn.innerHTML = '✓ No Updates Available';
-                checkBtn.style.background = '#27ae60';
-                checkBtn.style.cursor = 'default';
+    /**
+     * Check for script updates from GitHub
+     * Compares current version with GitHub version
+     */
+    function checkForUpdates() {
+        const checkBtn = document.getElementById('checkUpdatesBtn');
+        if (!checkBtn) return;
+        
+        checkBtn.style.opacity = '0.6';
+        checkBtn.innerHTML = '⟳ Checking...';
+        
+        fetch(UPDATE_CONFIG.GITHUB_URL + '?t=' + Date.now())
+            .then(response => response.text())
+            .then(scriptContent => {
+                checkBtn.style.opacity = '1';
+                
+                // Extract version from script
+                const match = scriptContent.match(/@version\s+([0-9.]+)/);
+                const latestVersion = match ? match[1] : null;
+                
+                console.log(`[Update] Current: v${UPDATE_CONFIG.CURRENT_VERSION}, GitHub: v${latestVersion}`);
+                
+                if (latestVersion && latestVersion !== UPDATE_CONFIG.CURRENT_VERSION) {
+                    // UPDATE AVAILABLE
+                    console.log(`[Update] ✓ New version ${latestVersion} available!`);
+                    checkBtn.innerHTML = `✓ Update Available: v${latestVersion}`;
+                    checkBtn.style.background = '#28a745';
+                    checkBtn.style.cursor = 'pointer';
+                    checkBtn.setAttribute('data-update-ready', 'true');
+                    
+                    alert(`[✓] Update Available!\n\nCurrent: v${UPDATE_CONFIG.CURRENT_VERSION}\nLatest: v${latestVersion}\n\nClick the button again to open the update link.`);
+                } else {
+                    // NO UPDATE NEEDED
+                    console.log(`[Update] ✓ Already up to date (v${UPDATE_CONFIG.CURRENT_VERSION})`);
+                    checkBtn.innerHTML = '✓ No Updates Available';
+                    checkBtn.style.background = '#27ae60';
+                    checkBtn.style.cursor = 'default';
+                    checkBtn.setAttribute('data-update-ready', 'false');
+                    
+                    alert(`[✓] You're up to date!\n\nVersion: v${UPDATE_CONFIG.CURRENT_VERSION}`);
+                    
+                    // Reset after 3 seconds
+                    setTimeout(() => {
+                        checkBtn.innerHTML = '⟳ Check for Updates';
+                        checkBtn.style.background = '#6c757d';
+                        checkBtn.style.cursor = 'pointer';
+                        checkBtn.removeAttribute('data-update-ready');
+                    }, 3000);
+                }
+            })
+            .catch(err => {
+                checkBtn.style.opacity = '1';
+                console.log('[Update] Check failed:', err);
+                checkBtn.innerHTML = '✗ Check Failed';
+                checkBtn.style.background = '#dc3545';
                 checkBtn.setAttribute('data-update-ready', 'false');
-
-                alert(`[✓] You're up to date!\n\nVersion: v${UPDATE_CONFIG.CURRENT_VERSION}`);
-
+                
+                alert('[✗] Update check failed!\n\nPlease try again later.');
+                
                 // Reset after 3 seconds
                 setTimeout(() => {
                     checkBtn.innerHTML = '⟳ Check for Updates';
                     checkBtn.style.background = '#6c757d';
-                    checkBtn.style.cursor = 'pointer';
                     checkBtn.removeAttribute('data-update-ready');
                 }, 3000);
-            }
-        })
-        .catch(err => {
-            checkBtn.style.opacity = '1';
-            console.log('[Update] Check failed:', err);
-            checkBtn.innerHTML = '✗ Check Failed';
-            checkBtn.style.background = '#dc3545';
-            checkBtn.setAttribute('data-update-ready', 'false');
-
-            alert('[✗] Update check failed!\n\nPlease try again later.');
-
-            // Reset after 3 seconds
-            setTimeout(() => {
-                checkBtn.innerHTML = '⟳ Check for Updates';
-                checkBtn.style.background = '#6c757d';
-                checkBtn.removeAttribute('data-update-ready');
-            }, 3000);
-        });
-}
-
-/**
- * Auto-check for updates on script load (once per 24 hours)
- */
-function autoCheckForUpdates() {
-    const lastCheckTime = localStorage.getItem('pageBuilderLastUpdateCheck');
-    const now = Date.now();
-
-    if (!lastCheckTime || (now - parseInt(lastCheckTime)) > UPDATE_CONFIG.CHECK_INTERVAL) {
-        console.log('[Update] Running auto-check for updates');
-        localStorage.setItem('pageBuilderLastUpdateCheck', now.toString());
-        // Silently check without showing UI
-        fetch(UPDATE_CONFIG.GITHUB_URL + '?t=' + Date.now())
-            .then(response => response.text())
-            .then(scriptContent => {
-                const match = scriptContent.match(/@version\s+([0-9.]+)/);
-                const latestVersion = match ? match[1] : null;
-                if (latestVersion && latestVersion !== UPDATE_CONFIG.CURRENT_VERSION) {
-                    console.log(`[Update] New version available: v${latestVersion}`);
-                    localStorage.setItem('pageBuilderUpdateAvailable', latestVersion);
-                }
-            })
-            .catch(err => console.log('[Update] Auto-check failed:', err));
+            });
     }
-}
 
-(function() {
-    'use strict';
+    /**
+     * Auto-check for updates on script load (once per 24 hours)
+     */
+    function autoCheckForUpdates() {
+        const lastCheckTime = localStorage.getItem('pageBuilderLastUpdateCheck');
+        const now = Date.now();
+        
+        if (!lastCheckTime || (now - parseInt(lastCheckTime)) > UPDATE_CONFIG.CHECK_INTERVAL) {
+            console.log('[Update] Running auto-check for updates');
+            localStorage.setItem('pageBuilderLastUpdateCheck', now.toString());
+            // Silently check without showing UI
+            fetch(UPDATE_CONFIG.GITHUB_URL + '?t=' + Date.now())
+                .then(response => response.text())
+                .then(scriptContent => {
+                    const match = scriptContent.match(/@version\s+([0-9.]+)/);
+                    const latestVersion = match ? match[1] : null;
+                    if (latestVersion && latestVersion !== UPDATE_CONFIG.CURRENT_VERSION) {
+                        console.log(`[Update] New version available: v${latestVersion}`);
+                        localStorage.setItem('pageBuilderUpdateAvailable', latestVersion);
+                    }
+                })
+                .catch(err => console.log('[Update] Auto-check failed:', err));
+        }
+    }
 
     // Global flag for stopping automation mid-process
     let shouldCancel = false;
 
     // Platform page mapping: section name → dropdown value
     const platformPageMapping = {
-        'new': '3',                // New Inventory - Search Inventory
-        'pre-owned': '11',         // Used Inventory - Search Inventory
-        'finance': '26',           // Finance - Finance
-        'service & parts': '20',   // Service - Service & Parts
-        'about us': '31'           // About Us - About Us
+        'new': '3',                
+        'pre-owned': '11',         
+        'finance': '26',           
+        'service & parts': '20',   
+        'about us': '31'           
     };
+
 
     // ========================================================================
 // SECTION 2: STYLING & UI ELEMENTS (UPDATED - Section name field removed)
