@@ -1,17 +1,19 @@
 // ============================================================================
-// SECTION 1: HEADER & CONFIGURATION (UPDATED - Page Type Mapping)
+// SECTION 1: HEADER & CONFIGURATION (FIXED - Working GitHub Updates)
 // ============================================================================
 // ==UserScript==
 // @name         CMS Page Builder Automation - Multi-Section
 // @namespace    http://tampermonkey.net/
-// @version      5.2
+// @version      5.3
 // @description  Automate bulk page creation - Multi-section with auto-updates
 // @author       Page Builder Team
 // @match        https://cms.dealeron.com/dash/dist/cms/*
-// @grant        none
+// @grant        GM_xmlhttpRequest
+// @grant        GM_getValue
+// @grant        GM_setValue
 // @connect      raw.githubusercontent.com
-// @updateURL    https://raw.githubusercontent.com/lazyasspanda/page-automation/main/CMS%20Page%20Builder%20Automation.user.js
-// @downloadURL  https://raw.githubusercontent.com/lazyasspanda/page-automation/main/CMS%20Page%20Builder%20Automation.user.js
+// @updateURL    https://github.com/lazyasspanda/page-automation/raw/refs/heads/main/CMS%20Page%20Builder%20Automation.user.js
+// @downloadURL  https://github.com/lazyasspanda/page-automation/raw/refs/heads/main/CMS%20Page%20Builder%20Automation.user.js
 // @homepageURL  https://github.com/lazyasspanda/page-automation
 // ==/UserScript==
 
@@ -19,53 +21,66 @@
     'use strict';
 
     // ====================================================================
-    // SECTION 0A: UPDATE CHECKING CONFIGURATION
+    // SECTION 0A: UPDATE CHECKING CONFIGURATION (FIXED)
     // ====================================================================
-    
-    // Update checker configuration
+
     const UPDATE_CONFIG = {
-        CURRENT_VERSION: '5.2',
-        GITHUB_URL: 'https://raw.githubusercontent.com/lazyasspanda/page-automation/main/CMS%20Page%20Builder%20Automation.user.js',
+        CURRENT_VERSION: '5.3',
+        GITHUB_URL: 'https://github.com/lazyasspanda/page-automation/raw/refs/heads/main/CMS%20Page%20Builder%20Automation.user.js',
         CHECK_INTERVAL: 24 * 60 * 60 * 1000,
-        SUPPRESS_AFTER_UPDATE_MS: 10 * 60 * 1000
     };
 
     /**
-     * Check for script updates from GitHub
+     * Check for script updates from GitHub using GM_xmlhttpRequest
+     * FIXED: Uses Tampermonkey's native request method instead of fetch()
      */
     function checkForUpdates() {
         const checkBtn = document.getElementById('checkUpdatesBtn');
         if (!checkBtn) return;
-        
+
         checkBtn.style.opacity = '0.6';
         checkBtn.innerHTML = '⟳ Checking...';
-        
-        fetch(UPDATE_CONFIG.GITHUB_URL + '?t=' + Date.now())
-            .then(response => response.text())
-            .then(scriptContent => {
+
+        GM_xmlhttpRequest({
+            method: 'GET',
+            url: UPDATE_CONFIG.GITHUB_URL + '?t=' + Date.now(),
+            onload: function(response) {
                 checkBtn.style.opacity = '1';
+
+                if (response.status !== 200) {
+                    console.log('[Update] GitHub request failed:', response.status);
+                    showUpdateError(checkBtn);
+                    return;
+                }
+
+                const scriptContent = response.responseText;
                 const match = scriptContent.match(/@version\s+([0-9.]+)/);
                 const latestVersion = match ? match[1] : null;
-                
+
                 console.log(`[Update] Current: v${UPDATE_CONFIG.CURRENT_VERSION}, GitHub: v${latestVersion}`);
-                
+
                 if (latestVersion && latestVersion !== UPDATE_CONFIG.CURRENT_VERSION) {
+                    // UPDATE AVAILABLE
                     console.log(`[Update] ✓ New version ${latestVersion} available!`);
                     checkBtn.innerHTML = `✓ Update Available: v${latestVersion}`;
                     checkBtn.style.background = '#28a745';
                     checkBtn.style.cursor = 'pointer';
                     checkBtn.setAttribute('data-update-ready', 'true');
-                    
+
+                    // Store update info
+                    GM_setValue('updateAvailable', latestVersion);
+
                     alert(`[✓] Update Available!\n\nCurrent: v${UPDATE_CONFIG.CURRENT_VERSION}\nLatest: v${latestVersion}\n\nClick the button again to open the update link.`);
                 } else {
+                    // NO UPDATE NEEDED
                     console.log(`[Update] ✓ Already up to date (v${UPDATE_CONFIG.CURRENT_VERSION})`);
                     checkBtn.innerHTML = '✓ No Updates Available';
                     checkBtn.style.background = '#27ae60';
                     checkBtn.style.cursor = 'default';
                     checkBtn.setAttribute('data-update-ready', 'false');
-                    
+
                     alert(`[✓] You're up to date!\n\nVersion: v${UPDATE_CONFIG.CURRENT_VERSION}`);
-                    
+
                     setTimeout(() => {
                         checkBtn.innerHTML = '⟳ Check for Updates';
                         checkBtn.style.background = '#6c757d';
@@ -73,45 +88,63 @@
                         checkBtn.removeAttribute('data-update-ready');
                     }, 3000);
                 }
-            })
-            .catch(err => {
-                checkBtn.style.opacity = '1';
-                console.log('[Update] Check failed:', err);
-                checkBtn.innerHTML = '✗ Check Failed';
-                checkBtn.style.background = '#dc3545';
-                checkBtn.setAttribute('data-update-ready', 'false');
-                
-                alert('[✗] Update check failed!\n\nPlease try again later.');
-                
-                setTimeout(() => {
-                    checkBtn.innerHTML = '⟳ Check for Updates';
-                    checkBtn.style.background = '#6c757d';
-                    checkBtn.removeAttribute('data-update-ready');
-                }, 3000);
-            });
+            },
+            onerror: function(error) {
+                console.log('[Update] Check failed:', error);
+                showUpdateError(checkBtn);
+            }
+        });
     }
 
     /**
-     * Auto-check for updates on script load
+     * Show update check error
+     */
+    function showUpdateError(checkBtn) {
+        checkBtn.style.opacity = '1';
+        checkBtn.innerHTML = '✗ Check Failed';
+        checkBtn.style.background = '#dc3545';
+        checkBtn.setAttribute('data-update-ready', 'false');
+
+        alert('[✗] Update check failed!\n\nPossible reasons:\n- No internet connection\n- GitHub is down\n- Firewall blocking connection\n\nPlease try again later.');
+
+        setTimeout(() => {
+            checkBtn.innerHTML = '⟳ Check for Updates';
+            checkBtn.style.background = '#6c757d';
+            checkBtn.removeAttribute('data-update-ready');
+        }, 3000);
+    }
+
+    /**
+     * Auto-check for updates on script load (silent check)
+     * FIXED: Uses GM_xmlhttpRequest instead of fetch
      */
     function autoCheckForUpdates() {
-        const lastCheckTime = localStorage.getItem('pageBuilderLastUpdateCheck');
+        const lastCheckTime = GM_getValue('lastUpdateCheck', 0);
         const now = Date.now();
-        
-        if (!lastCheckTime || (now - parseInt(lastCheckTime)) > UPDATE_CONFIG.CHECK_INTERVAL) {
+
+        if ((now - lastCheckTime) > UPDATE_CONFIG.CHECK_INTERVAL) {
             console.log('[Update] Running auto-check for updates');
-            localStorage.setItem('pageBuilderLastUpdateCheck', now.toString());
-            fetch(UPDATE_CONFIG.GITHUB_URL + '?t=' + Date.now())
-                .then(response => response.text())
-                .then(scriptContent => {
-                    const match = scriptContent.match(/@version\s+([0-9.]+)/);
-                    const latestVersion = match ? match[1] : null;
-                    if (latestVersion && latestVersion !== UPDATE_CONFIG.CURRENT_VERSION) {
-                        console.log(`[Update] New version available: v${latestVersion}`);
-                        localStorage.setItem('pageBuilderUpdateAvailable', latestVersion);
+            GM_setValue('lastUpdateCheck', now);
+
+            GM_xmlhttpRequest({
+                method: 'GET',
+                url: UPDATE_CONFIG.GITHUB_URL + '?t=' + Date.now(),
+                onload: function(response) {
+                    if (response.status === 200) {
+                        const scriptContent = response.responseText;
+                        const match = scriptContent.match(/@version\s+([0-9.]+)/);
+                        const latestVersion = match ? match[1] : null;
+
+                        if (latestVersion && latestVersion !== UPDATE_CONFIG.CURRENT_VERSION) {
+                            console.log(`[Update] New version available: v${latestVersion}`);
+                            GM_setValue('updateAvailable', latestVersion);
+                        }
                     }
-                })
-                .catch(err => console.log('[Update] Auto-check failed:', err));
+                },
+                onerror: function(error) {
+                    console.log('[Update] Auto-check failed silently:', error);
+                }
+            });
         }
     }
 
@@ -121,68 +154,41 @@
     // ====================================================================
     // PAGE TYPE MAPPING - Excel Text to CMS Dropdown Value
     // ====================================================================
-    
-    /**
-     * Maps Excel page type text to CMS dropdown values
-     * Case-insensitive matching with partial string support
-     */
+
     const pageTypeMapping = {
-        // Platform Page - SKIP
         'platform page': '0',
         'platform': '0',
-        
-        // Custom Content
         'custom content': '1',
-        
-        // Local Link
         'local link': '2',
-        
-        // External Link
         'external link': '3',
-        
-        // Custom Content with Inventory
         'custom content with inventory': '7',
-        
-        // Custom Iframe
         'custom iframe': '9',
         'iframe': '9',
-        
-        // Custom Model Research Page
         'custom model research page': '10',
         'model research': '10',
-        
-        // Specials Listing Page
         'special listing page': '12',
         'specials listing': '12',
         'listing page': '12'
     };
 
-    /**
-     * Get CMS dropdown value from Excel page type text
-     * @param {string} pageTypeText - Text from Excel "Page Type" column
-     * @returns {string|null} CMS dropdown value or null if not found
-     */
     function getPageTypeValue(pageTypeText) {
         if (!pageTypeText) return null;
-        
+
         const normalized = pageTypeText.toLowerCase().trim();
-        
-        // Direct match
+
         if (pageTypeMapping[normalized]) {
             return pageTypeMapping[normalized];
         }
-        
-        // Partial match (for variations like "Custom Content With Inventory")
+
         for (const [key, value] of Object.entries(pageTypeMapping)) {
             if (normalized.includes(key) || key.includes(normalized)) {
                 return value;
             }
         }
-        
+
         return null;
     }
 
-    // Platform page mapping for section dropdown (kept for reference)
     const platformPageMapping = {
         'new': '3',
         'pre-owned': '11',
@@ -190,8 +196,6 @@
         'service & parts': '20',
         'about us': '31'
     };
-
-
 
     // ========================================================================
 // SECTION 2: STYLING & UI ELEMENTS (UPDATED - Section name field removed)
@@ -627,17 +631,17 @@ const modalHTML = `
  */
 async function waitForSidebarToOpen() {
     log('Waiting for sidebar to open...', 'info');
-    
+
     for (let i = 0; i < 30; i++) {
         await new Promise(resolve => setTimeout(resolve, 500));
-        
+
         const selectPageType = document.getElementById('selectPageType');
         if (selectPageType && selectPageType.offsetParent !== null) {
             log('✓ Sidebar opened', 'success');
             return true;
         }
     }
-    
+
     throw new Error('Sidebar did not open in time (waited 15 seconds)');
 }
 
@@ -648,17 +652,17 @@ async function waitForSidebarToOpen() {
  */
 async function waitForSidebarToClose() {
     log('Waiting for sidebar to close...', 'info');
-    
+
     for (let i = 0; i < 20; i++) {
         await new Promise(resolve => setTimeout(resolve, 500));
-        
+
         const selectPageType = document.getElementById('selectPageType');
         if (!selectPageType || selectPageType.offsetParent === null) {
             log('✓ Sidebar closed', 'success');
             return true;
         }
     }
-    
+
     // Silently proceed without warning (removed the warning log)
     return true;
 }
@@ -669,7 +673,7 @@ async function waitForSidebarToClose() {
  */
 async function closeErrorPopup() {
     await new Promise(resolve => setTimeout(resolve, 500));
-    
+
     const alertButtons = document.querySelectorAll('button[class*="btn"]');
     for (let btn of alertButtons) {
         const text = btn.textContent.toLowerCase();
@@ -779,42 +783,42 @@ async function closeErrorPopup() {
 
 /**
  * Create a page of any supported type (except Platform)
- * Handles: Custom Content, Local Link, External Link, Custom Iframe, 
+ * Handles: Custom Content, Local Link, External Link, Custom Iframe,
  *          Custom Model Research Page, Specials Listing Page, Custom Content with Inventory
- * 
+ *
  * @param {Object} pageData - Page data object with pageName, slug, section, pageType, status
  * @param {boolean} isLast - Whether this is the last page in the batch
  */
 async function createGenericPage(pageData, isLast) {
     if (shouldCancel) throw new Error('Process cancelled by user');
-    
+
     const pageTypeValue = getPageTypeValue(pageData.pageType);
-    
+
     if (!pageTypeValue) {
         log(`⚠ Unknown page type: "${pageData.pageType}" - Skipping`, 'error');
         return;
     }
-    
+
     // SKIP Platform Pages
     if (pageTypeValue === '0') {
         log(`⏭️  SKIPPING Platform Page: ${pageData.pageName}`, 'warning');
         return;
     }
-    
+
     log(`Creating ${pageData.pageType}: ${pageData.pageName}`, 'info');
-    
+
     await waitForElement('#selectPageType');
     await new Promise(resolve => setTimeout(resolve, 500));
-    
+
     // Step 1: Select Page Type from dropdown
     const pageTypeSelect = document.getElementById('selectPageType');
     pageTypeSelect.value = pageTypeValue;
     triggerChange(pageTypeSelect);
     log(`✓ Selected page type: ${pageData.pageType} (value: ${pageTypeValue})`, 'success');
-    
+
     // Wait for form fields to load after page type selection
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
+
     // Step 2: Fill in Title field with page name from Excel
     const titleInput = document.querySelector('input[name="page_name"]');
     if (titleInput) {
@@ -824,9 +828,9 @@ async function createGenericPage(pageData, isLast) {
     } else {
         log(`⚠ Title field not found for ${pageData.pageType}`, 'warning');
     }
-    
+
     await new Promise(resolve => setTimeout(resolve, 500));
-    
+
     // Step 3: Fill in URL/slug field
     const urlInput = document.querySelector('input[name="vanityPath"]');
     if (urlInput) {
@@ -836,9 +840,9 @@ async function createGenericPage(pageData, isLast) {
     } else {
         log(`⚠ URL field not found for ${pageData.pageType}`, 'warning');
     }
-    
+
     await new Promise(resolve => setTimeout(resolve, 500));
-    
+
     // Step 4: Set visibility based on status (Enabled or Sitemapped)
     const visibilityValue = pageData.status.toLowerCase().includes('sitemap') ? 'SitemapOnly' : 'Enabled';
     const visibilityRadio = document.querySelector(`input[name="visibility"][value="${visibilityValue}"]`);
@@ -846,9 +850,9 @@ async function createGenericPage(pageData, isLast) {
         visibilityRadio.checked = true;
         log(`✓ Set visibility: ${visibilityValue}`, 'success');
     }
-    
+
     await new Promise(resolve => setTimeout(resolve, 500));
-    
+
     // Step 5: Check "Add Another" checkbox if not last page
     if (!isLast) {
         const addAnotherCheckbox = document.getElementById('addAnotherPage');
@@ -857,9 +861,9 @@ async function createGenericPage(pageData, isLast) {
             log('✓ Checked "Add Another"', 'success');
         }
     }
-    
+
     await new Promise(resolve => setTimeout(resolve, 500));
-    
+
     // Step 6: Click "Add Page" submit button
     const addBtn = document.querySelector('input[type="submit"][value="Add Page"]');
     if (addBtn) {
@@ -868,10 +872,10 @@ async function createGenericPage(pageData, isLast) {
     } else {
         throw new Error('Add Page button not found');
     }
-    
+
     // Handle any error popups that appear
     await closeErrorPopup();
-    
+
     // Wait for sidebar to close before moving to next page
     if (!isLast) {
         await waitForSidebarToClose();
@@ -985,24 +989,24 @@ function getMappedSectionName(sectionName) {
  */
 async function startBulkProcess() {
     const rawData = document.getElementById('excelData').value;
-    
+
     if (!rawData.trim()) {
         alert('Please paste Excel data first!');
         return;
     }
-    
+
     const pages = parseExcelData(rawData);
-    
+
     if (pages.length === 0) {
         alert('No valid data found.');
         return;
     }
-    
+
     // Apply section mapping to pages
     pages.forEach(page => {
         page.mappedSection = getMappedSectionName(page.section);
     });
-    
+
     // Group pages by MAPPED section
     const sectionsMap = new Map();
     pages.forEach(page => {
@@ -1011,12 +1015,12 @@ async function startBulkProcess() {
         }
         sectionsMap.get(page.mappedSection).push(page);
     });
-    
+
     const uniqueSections = Array.from(sectionsMap.keys());
-    
+
     log(`📊 Found ${uniqueSections.length} sections: ${uniqueSections.join(', ')}`, 'info');
     log(`📄 Total pages: ${pages.length}`, 'info');
-    
+
     // Summary tracking
     const summary = {
         totalPages: pages.length,
@@ -1025,20 +1029,20 @@ async function startBulkProcess() {
         failCount: 0,
         failedPages: []
     };
-    
+
     document.getElementById('startBulkProcessBtn').disabled = true;
     document.getElementById('previewDataBtn').disabled = true;
     document.getElementById('stopProcessBtn').disabled = false;
     shouldCancel = false;
-    
+
     try {
         // MAIN LOOP: Process each section
         for (let sectionIndex = 0; sectionIndex < uniqueSections.length; sectionIndex++) {
             if (shouldCancel) throw new Error('Process cancelled by user');
-            
+
             const currentSectionName = uniqueSections[sectionIndex];
             const sectionPages = sectionsMap.get(currentSectionName);
-            
+
             // Filter out Platform pages for this section
             const pagesToCreate = sectionPages.filter(p => {
                 const typeValue = getPageTypeValue(p.pageType);
@@ -1048,89 +1052,89 @@ async function startBulkProcess() {
                 }
                 return true;
             });
-            
+
             const platformPagesSkipped = sectionPages.length - pagesToCreate.length;
-            
+
             if (pagesToCreate.length === 0) {
                 log(`\n⏭️  SKIPPING SECTION "${currentSectionName}" - All pages are Platform type`, 'warning');
                 continue;
             }
-            
+
             log(`\n${'='.repeat(70)}`, 'info');
             log(`SECTION ${sectionIndex + 1}/${uniqueSections.length}: "${currentSectionName}"`, 'info');
             log(`Pages to create: ${pagesToCreate.length} | Platform pages skipped: ${platformPagesSkipped}`, 'info');
             log(`${'='.repeat(70)}`, 'info');
-            
+
             // STEP 1: CREATE SECTION (Local Link with New Inventory)
             log(`\nCreating section "${currentSectionName}"...`, 'info');
-            
+
             const addSectionBtn = document.querySelector('#addSection input[type="button"]');
             if (!addSectionBtn) {
                 throw new Error('Add Section button not found');
             }
-            
+
             addSectionBtn.click();
             log('✓ Clicked Add Section', 'success');
-            
+
             await waitForSidebarToOpen();
-            
+
             const pageTypeSelect = document.getElementById('selectPageType');
             pageTypeSelect.value = '2'; // Local Link
             triggerChange(pageTypeSelect);
             log('✓ Selected Local Link', 'success');
-            
+
             await new Promise(resolve => setTimeout(resolve, 500));
-            
+
             const sectionTypeSelect = document.querySelector('select[name="sectiontypeid"]');
             if (sectionTypeSelect) {
                 sectionTypeSelect.value = '1'; // New Inventory
                 triggerChange(sectionTypeSelect);
                 log('✓ Selected New Inventory', 'success');
             }
-            
+
             await new Promise(resolve => setTimeout(resolve, 500));
-            
+
             const titleInput = document.querySelector('input[name="page_name"]');
             if (titleInput) {
                 titleInput.value = currentSectionName;
                 titleInput.dispatchEvent(new Event('input', { bubbles: true }));
                 log(`✓ Entered section name: "${currentSectionName}"`, 'success');
             }
-            
+
             await new Promise(resolve => setTimeout(resolve, 500));
-            
+
             const addPageBtn = document.querySelector('input[type="submit"][value="Add Page"]');
             if (addPageBtn) {
                 addPageBtn.click();
                 log('✓ Section created', 'success');
             }
-            
+
             await closeErrorPopup();
             await waitForSidebarToClose();
             await clickAddPageInSection();
-            
+
             // STEP 2: ADD ALL PAGES TO THIS SECTION
             log(`\n--- Adding ${pagesToCreate.length} pages to section "${currentSectionName}" ---`, 'info');
-            
+
             for (let pageIndex = 0; pageIndex < pagesToCreate.length; pageIndex++) {
                 if (shouldCancel) throw new Error('Process cancelled by user');
-                
+
                 const pageData = pagesToCreate[pageIndex];
                 const isLast = (pageIndex === pagesToCreate.length - 1);
                 const isLastSection = (sectionIndex === uniqueSections.length - 1);
-                
+
                 log(`\n  Page ${pageIndex + 1}/${pagesToCreate.length}: ${pageData.pageName} (${pageData.pageType})`, 'info');
-                
+
                 try {
                     // Create page using generic function (handles all types)
                     await createGenericPage(pageData, isLast && isLastSection);
                     summary.successCount++;
-                    
+
                     // After each page (except last of section), click Add Page link to reopen sidebar
                     if (!isLast) {
                         await clickAddPageInSection();
                     }
-                    
+
                 } catch (pageError) {
                     log(`  ⚠ Error: ${pageError.message}`, 'error');
                     summary.failCount++;
@@ -1141,10 +1145,10 @@ async function startBulkProcess() {
                     });
                 }
             }
-            
+
             log(`\n✓ Completed section "${currentSectionName}"`, 'success');
         }
-        
+
         // GENERATE SUMMARY REPORT
         log(`\n${'='.repeat(70)}`, 'info');
         log('📊 SUMMARY REPORT', 'info');
@@ -1153,18 +1157,18 @@ async function startBulkProcess() {
         log(`✓ Successfully Created: ${summary.successCount}`, 'success');
         log(`⏭️  Skipped (Platform Pages): ${summary.skipCount}`, 'warning');
         log(`✗ Failed: ${summary.failCount}`, summary.failCount > 0 ? 'error' : 'info');
-        
+
         if (summary.failedPages.length > 0) {
             log(`\nFailed Pages:`, 'error');
             summary.failedPages.forEach((page, idx) => {
                 log(`  ${idx + 1}. ${page.name} (${page.type}) - ${page.error}`, 'error');
             });
         }
-        
+
         log(`${'='.repeat(70)}`, 'info');
         log('🎉 Process completed!', 'success');
         log(`${'='.repeat(70)}`, 'info');
-        
+
         // Show summary alert
         let alertMessage = '✅ Bulk page creation completed!\n\n';
         alertMessage += `📊 Summary:\n`;
@@ -1172,7 +1176,7 @@ async function startBulkProcess() {
         alertMessage += `✓ Created: ${summary.successCount}\n`;
         alertMessage += `⏭️ Skipped: ${summary.skipCount}\n`;
         alertMessage += `✗ Failed: ${summary.failCount}`;
-        
+
         if (summary.failedPages.length > 0) {
             alertMessage += `\n\nFailed Pages:\n`;
             summary.failedPages.slice(0, 5).forEach((page, idx) => {
@@ -1182,9 +1186,9 @@ async function startBulkProcess() {
                 alertMessage += `... and ${summary.failedPages.length - 5} more`;
             }
         }
-        
+
         alert(alertMessage);
-        
+
     } catch (error) {
         if (error.message !== 'Process cancelled by user') {
             log(`\n❌ Error: ${error.message}`, 'error');
