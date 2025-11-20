@@ -1,10 +1,10 @@
 // ============================================================================
-// SECTION 1: HEADER & CONFIGURATION (FIXED)
+// SECTION 1: HEADER & CONFIGURATION (UPDATED - Page Type Mapping)
 // ============================================================================
 // ==UserScript==
 // @name         CMS Page Builder Automation - Multi-Section
 // @namespace    http://tampermonkey.net/
-// @version      5.1
+// @version      5.2
 // @description  Automate bulk page creation - Multi-section with auto-updates
 // @author       Page Builder Team
 // @match        https://cms.dealeron.com/dash/dist/cms/*
@@ -24,15 +24,14 @@
     
     // Update checker configuration
     const UPDATE_CONFIG = {
-        CURRENT_VERSION: '5.1',
+        CURRENT_VERSION: '5.2',
         GITHUB_URL: 'https://raw.githubusercontent.com/lazyasspanda/page-automation/main/CMS%20Page%20Builder%20Automation.user.js',
-        CHECK_INTERVAL: 24 * 60 * 60 * 1000, // Check every 24 hours
-        SUPPRESS_AFTER_UPDATE_MS: 10 * 60 * 1000 // Suppress for 10 minutes after clicking Update
+        CHECK_INTERVAL: 24 * 60 * 60 * 1000,
+        SUPPRESS_AFTER_UPDATE_MS: 10 * 60 * 1000
     };
 
     /**
      * Check for script updates from GitHub
-     * Compares current version with GitHub version
      */
     function checkForUpdates() {
         const checkBtn = document.getElementById('checkUpdatesBtn');
@@ -45,15 +44,12 @@
             .then(response => response.text())
             .then(scriptContent => {
                 checkBtn.style.opacity = '1';
-                
-                // Extract version from script
                 const match = scriptContent.match(/@version\s+([0-9.]+)/);
                 const latestVersion = match ? match[1] : null;
                 
                 console.log(`[Update] Current: v${UPDATE_CONFIG.CURRENT_VERSION}, GitHub: v${latestVersion}`);
                 
                 if (latestVersion && latestVersion !== UPDATE_CONFIG.CURRENT_VERSION) {
-                    // UPDATE AVAILABLE
                     console.log(`[Update] ✓ New version ${latestVersion} available!`);
                     checkBtn.innerHTML = `✓ Update Available: v${latestVersion}`;
                     checkBtn.style.background = '#28a745';
@@ -62,7 +58,6 @@
                     
                     alert(`[✓] Update Available!\n\nCurrent: v${UPDATE_CONFIG.CURRENT_VERSION}\nLatest: v${latestVersion}\n\nClick the button again to open the update link.`);
                 } else {
-                    // NO UPDATE NEEDED
                     console.log(`[Update] ✓ Already up to date (v${UPDATE_CONFIG.CURRENT_VERSION})`);
                     checkBtn.innerHTML = '✓ No Updates Available';
                     checkBtn.style.background = '#27ae60';
@@ -71,7 +66,6 @@
                     
                     alert(`[✓] You're up to date!\n\nVersion: v${UPDATE_CONFIG.CURRENT_VERSION}`);
                     
-                    // Reset after 3 seconds
                     setTimeout(() => {
                         checkBtn.innerHTML = '⟳ Check for Updates';
                         checkBtn.style.background = '#6c757d';
@@ -89,7 +83,6 @@
                 
                 alert('[✗] Update check failed!\n\nPlease try again later.');
                 
-                // Reset after 3 seconds
                 setTimeout(() => {
                     checkBtn.innerHTML = '⟳ Check for Updates';
                     checkBtn.style.background = '#6c757d';
@@ -99,7 +92,7 @@
     }
 
     /**
-     * Auto-check for updates on script load (once per 24 hours)
+     * Auto-check for updates on script load
      */
     function autoCheckForUpdates() {
         const lastCheckTime = localStorage.getItem('pageBuilderLastUpdateCheck');
@@ -108,7 +101,6 @@
         if (!lastCheckTime || (now - parseInt(lastCheckTime)) > UPDATE_CONFIG.CHECK_INTERVAL) {
             console.log('[Update] Running auto-check for updates');
             localStorage.setItem('pageBuilderLastUpdateCheck', now.toString());
-            // Silently check without showing UI
             fetch(UPDATE_CONFIG.GITHUB_URL + '?t=' + Date.now())
                 .then(response => response.text())
                 .then(scriptContent => {
@@ -126,14 +118,79 @@
     // Global flag for stopping automation mid-process
     let shouldCancel = false;
 
-    // Platform page mapping: section name → dropdown value
-    const platformPageMapping = {
-        'new': '3',                
-        'pre-owned': '11',         
-        'finance': '26',           
-        'service & parts': '20',   
-        'about us': '31'           
+    // ====================================================================
+    // PAGE TYPE MAPPING - Excel Text to CMS Dropdown Value
+    // ====================================================================
+    
+    /**
+     * Maps Excel page type text to CMS dropdown values
+     * Case-insensitive matching with partial string support
+     */
+    const pageTypeMapping = {
+        // Platform Page - SKIP
+        'platform page': '0',
+        'platform': '0',
+        
+        // Custom Content
+        'custom content': '1',
+        
+        // Local Link
+        'local link': '2',
+        
+        // External Link
+        'external link': '3',
+        
+        // Custom Content with Inventory
+        'custom content with inventory': '7',
+        
+        // Custom Iframe
+        'custom iframe': '9',
+        'iframe': '9',
+        
+        // Custom Model Research Page
+        'custom model research page': '10',
+        'model research': '10',
+        
+        // Specials Listing Page
+        'special listing page': '12',
+        'specials listing': '12',
+        'listing page': '12'
     };
+
+    /**
+     * Get CMS dropdown value from Excel page type text
+     * @param {string} pageTypeText - Text from Excel "Page Type" column
+     * @returns {string|null} CMS dropdown value or null if not found
+     */
+    function getPageTypeValue(pageTypeText) {
+        if (!pageTypeText) return null;
+        
+        const normalized = pageTypeText.toLowerCase().trim();
+        
+        // Direct match
+        if (pageTypeMapping[normalized]) {
+            return pageTypeMapping[normalized];
+        }
+        
+        // Partial match (for variations like "Custom Content With Inventory")
+        for (const [key, value] of Object.entries(pageTypeMapping)) {
+            if (normalized.includes(key) || key.includes(normalized)) {
+                return value;
+            }
+        }
+        
+        return null;
+    }
+
+    // Platform page mapping for section dropdown (kept for reference)
+    const platformPageMapping = {
+        'new': '3',
+        'pre-owned': '11',
+        'finance': '26',
+        'service & parts': '20',
+        'about us': '31'
+    };
+
 
 
     // ========================================================================
@@ -507,7 +564,11 @@ const modalHTML = `
             document.querySelector('.close-modal').addEventListener('click', closeModal);
             document.getElementById('cancelProcessBtn').addEventListener('click', closeModal);
             document.getElementById('previewDataBtn').addEventListener('click', previewData);
-            document.getElementById('startBulkProcessBtn').addEventListener('click', startBulkProcess);
+            document.getElementById('startBulkProcessBtn').addEventListener('click', function() {
+    // Show stop button when process starts
+    document.getElementById('stopProcessBtn').style.display = 'block';
+    startBulkProcess();
+});
             document.getElementById('stopProcessBtn').addEventListener('click', stopProcess);
                         // Update check button listener
             document.getElementById('checkUpdatesBtn').addEventListener('click', function() {
@@ -556,48 +617,49 @@ const modalHTML = `
         log('⛔ Process stopped by user', 'error');
     }
 
-    // ========================================================================
-// SECTION 5: SIDEBAR & FORM DETECTION FUNCTIONS (UPDATED - Longer timeouts)
+ // ========================================================================
+// SECTION 5: SIDEBAR & FORM DETECTION FUNCTIONS (UPDATED - Silent mode)
 // ========================================================================
 
 /**
  * Wait for sidebar to open by checking visibility of form elements
- * UPDATED: Increased polling from 20x to 30x with 500ms intervals = up to 15 seconds
+ * Increased polling: 30x with 500ms intervals = up to 15 seconds
  */
 async function waitForSidebarToOpen() {
     log('Waiting for sidebar to open...', 'info');
-
-    for (let i = 0; i < 30; i++) {  // CHANGED: from 20 to 30 iterations
-        await new Promise(resolve => setTimeout(resolve, 500));  // CHANGED: from 250ms to 500ms
-
+    
+    for (let i = 0; i < 30; i++) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         const selectPageType = document.getElementById('selectPageType');
         if (selectPageType && selectPageType.offsetParent !== null) {
             log('✓ Sidebar opened', 'success');
             return true;
         }
     }
-
+    
     throw new Error('Sidebar did not open in time (waited 15 seconds)');
 }
 
 /**
  * Wait for sidebar to close by checking visibility of form elements
- * UPDATED: Increased polling from 10x to 20x with 500ms intervals = up to 10 seconds
+ * Increased polling: 20x with 500ms intervals = up to 10 seconds
+ * UPDATED: Silently proceeds if sidebar doesn't close
  */
 async function waitForSidebarToClose() {
     log('Waiting for sidebar to close...', 'info');
-
-    for (let i = 0; i < 20; i++) {  // CHANGED: from 10 to 20 iterations
-        await new Promise(resolve => setTimeout(resolve, 500));  // CHANGED: from 250ms to 500ms
-
+    
+    for (let i = 0; i < 20; i++) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         const selectPageType = document.getElementById('selectPageType');
         if (!selectPageType || selectPageType.offsetParent === null) {
             log('✓ Sidebar closed', 'success');
             return true;
         }
     }
-
-    log('⚠ Sidebar still open, proceeding anyway', 'warning');
+    
+    // Silently proceed without warning (removed the warning log)
     return true;
 }
 
@@ -607,7 +669,7 @@ async function waitForSidebarToClose() {
  */
 async function closeErrorPopup() {
     await new Promise(resolve => setTimeout(resolve, 500));
-
+    
     const alertButtons = document.querySelectorAll('button[class*="btn"]');
     for (let btn of alertButtons) {
         const text = btn.textContent.toLowerCase();
@@ -712,89 +774,111 @@ async function closeErrorPopup() {
     }
 
     // ========================================================================
-    // SECTION 7: CUSTOM CONTENT PAGE CREATION
-    // ========================================================================
+// SECTION 7: GENERIC PAGE CREATION (REWRITTEN - Supports All Page Types)
+// ========================================================================
 
-    /**
-     * Create a Custom Content Page
-     * Process: Select type → Fill title → Fill slug → Set visibility → Check Add Another → Submit
-     * @param {Object} pageData - Page data object with pageName, slug, section, pageType, status
-     * @param {boolean} isLast - Whether this is the last page in the batch
-     */
-    async function createCustomContentPage(pageData, isLast) {
-        if (shouldCancel) throw new Error('Process cancelled by user');
-
-        log(`Creating Custom Content: ${pageData.pageName}`, 'info');
-
-        await waitForElement('#selectPageType');
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Step 1: Select Custom Content (value 1)
-        const pageTypeSelect = document.getElementById('selectPageType');
-        pageTypeSelect.value = '1';
-        triggerChange(pageTypeSelect);
-        log('✓ Selected Custom Content', 'success');
-
-        // Wait for form fields to load after page type selection
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        // Step 2: Fill in Title field with page name from Excel
-        const titleInput = document.querySelector('input[name="page_name"]');
-        if (titleInput) {
-            titleInput.value = pageData.pageName;
-            titleInput.dispatchEvent(new Event('input', { bubbles: true }));
-            log(`✓ Entered title: ${pageData.pageName}`, 'success');
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Step 3: Fill in slug (URL) field with slug from Excel
-        const urlInput = document.querySelector('input[name="vanityPath"]');
-        if (urlInput) {
-            urlInput.value = pageData.slug;
-            urlInput.dispatchEvent(new Event('input', { bubbles: true }));
-            log(`✓ Entered URL: ${pageData.slug}`, 'success');
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Step 4: Set visibility based on status (Enabled or Sitemapped)
-        const visibilityValue = pageData.status.toLowerCase().includes('sitemap') ? 'SitemapOnly' : 'Enabled';
-        const visibilityRadio = document.querySelector(`input[name="visibility"][value="${visibilityValue}"]`);
-        if (visibilityRadio) {
-            visibilityRadio.checked = true;
-            log(`✓ Set visibility: ${visibilityValue}`, 'success');
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Step 5: Check "Add Another" checkbox if not last page
-        if (!isLast) {
-            const addAnotherCheckbox = document.getElementById('addAnotherPage');
-            if (addAnotherCheckbox) {
-                addAnotherCheckbox.checked = true;
-                log('✓ Checked "Add Another"', 'success');
-            }
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Step 6: Click "Add Page" submit button
-        const addBtn = document.querySelector('input[type="submit"][value="Add Page"]');
-        if (addBtn) {
-            addBtn.click();
-            log('✓ Clicked Add Page', 'success');
-        }
-
-        // Handle any error popups that appear
-        await closeErrorPopup();
-
-        // Wait for sidebar to close before moving to next page
-        if (!isLast) {
-            await waitForSidebarToClose();
-            await new Promise(resolve => setTimeout(resolve, 1500));
+/**
+ * Create a page of any supported type (except Platform)
+ * Handles: Custom Content, Local Link, External Link, Custom Iframe, 
+ *          Custom Model Research Page, Specials Listing Page, Custom Content with Inventory
+ * 
+ * @param {Object} pageData - Page data object with pageName, slug, section, pageType, status
+ * @param {boolean} isLast - Whether this is the last page in the batch
+ */
+async function createGenericPage(pageData, isLast) {
+    if (shouldCancel) throw new Error('Process cancelled by user');
+    
+    const pageTypeValue = getPageTypeValue(pageData.pageType);
+    
+    if (!pageTypeValue) {
+        log(`⚠ Unknown page type: "${pageData.pageType}" - Skipping`, 'error');
+        return;
+    }
+    
+    // SKIP Platform Pages
+    if (pageTypeValue === '0') {
+        log(`⏭️  SKIPPING Platform Page: ${pageData.pageName}`, 'warning');
+        return;
+    }
+    
+    log(`Creating ${pageData.pageType}: ${pageData.pageName}`, 'info');
+    
+    await waitForElement('#selectPageType');
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Step 1: Select Page Type from dropdown
+    const pageTypeSelect = document.getElementById('selectPageType');
+    pageTypeSelect.value = pageTypeValue;
+    triggerChange(pageTypeSelect);
+    log(`✓ Selected page type: ${pageData.pageType} (value: ${pageTypeValue})`, 'success');
+    
+    // Wait for form fields to load after page type selection
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Step 2: Fill in Title field with page name from Excel
+    const titleInput = document.querySelector('input[name="page_name"]');
+    if (titleInput) {
+        titleInput.value = pageData.pageName;
+        titleInput.dispatchEvent(new Event('input', { bubbles: true }));
+        log(`✓ Entered title: ${pageData.pageName}`, 'success');
+    } else {
+        log(`⚠ Title field not found for ${pageData.pageType}`, 'warning');
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Step 3: Fill in URL/slug field
+    const urlInput = document.querySelector('input[name="vanityPath"]');
+    if (urlInput) {
+        urlInput.value = pageData.slug;
+        urlInput.dispatchEvent(new Event('input', { bubbles: true }));
+        log(`✓ Entered URL: ${pageData.slug}`, 'success');
+    } else {
+        log(`⚠ URL field not found for ${pageData.pageType}`, 'warning');
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Step 4: Set visibility based on status (Enabled or Sitemapped)
+    const visibilityValue = pageData.status.toLowerCase().includes('sitemap') ? 'SitemapOnly' : 'Enabled';
+    const visibilityRadio = document.querySelector(`input[name="visibility"][value="${visibilityValue}"]`);
+    if (visibilityRadio) {
+        visibilityRadio.checked = true;
+        log(`✓ Set visibility: ${visibilityValue}`, 'success');
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Step 5: Check "Add Another" checkbox if not last page
+    if (!isLast) {
+        const addAnotherCheckbox = document.getElementById('addAnotherPage');
+        if (addAnotherCheckbox) {
+            addAnotherCheckbox.checked = true;
+            log('✓ Checked "Add Another"', 'success');
         }
     }
+    
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Step 6: Click "Add Page" submit button
+    const addBtn = document.querySelector('input[type="submit"][value="Add Page"]');
+    if (addBtn) {
+        addBtn.click();
+        log('✓ Clicked Add Page', 'success');
+    } else {
+        throw new Error('Add Page button not found');
+    }
+    
+    // Handle any error popups that appear
+    await closeErrorPopup();
+    
+    // Wait for sidebar to close before moving to next page
+    if (!isLast) {
+        await waitForSidebarToClose();
+        await new Promise(resolve => setTimeout(resolve, 1500));
+    }
+}
+
 
     // ========================================================================
     // SECTION 8: SECTION & PAGE NAVIGATION
@@ -870,195 +954,252 @@ function previewData() {
 
 
 // ========================================================================
-// SECTION 10: MAIN AUTOMATION PROCESS (COMPLETELY REVISED - Multi-section)
+// SECTION 10: MAIN AUTOMATION PROCESS (UPDATED - Section Mapping + Summary)
 // ========================================================================
+
+/**
+ * Section mapping: Child sections → Parent sections
+ * These sections will NOT create new sections, but add pages to parent sections
+ */
+const sectionMergeMapping = {
+    'model research': 'About Us',
+    'research': 'About Us',
+    'body shop': 'Service & Parts',
+    'service department': 'Service & Parts'
+};
+
+/**
+ * Get the actual section name to use (handles merging)
+ * @param {string} sectionName - Section name from Excel
+ * @returns {string} Actual section name to use
+ */
+function getMappedSectionName(sectionName) {
+    const normalized = sectionName.toLowerCase().trim();
+    return sectionMergeMapping[normalized] || sectionName;
+}
 
 /**
  * Main automation orchestration function
  * Groups pages by section → Creates each section → Adds pages to section
- * Non-Platform pages only (Platform pages are skipped)
+ * Supports section merging and generates summary report
  */
 async function startBulkProcess() {
     const rawData = document.getElementById('excelData').value;
-
-    // Validate input
+    
     if (!rawData.trim()) {
         alert('Please paste Excel data first!');
         return;
     }
-
+    
     const pages = parseExcelData(rawData);
-
+    
     if (pages.length === 0) {
         alert('No valid data found.');
         return;
     }
-
-    // Get unique sections in order of appearance
+    
+    // Apply section mapping to pages
+    pages.forEach(page => {
+        page.mappedSection = getMappedSectionName(page.section);
+    });
+    
+    // Group pages by MAPPED section
     const sectionsMap = new Map();
     pages.forEach(page => {
-        if (!sectionsMap.has(page.section)) {
-            sectionsMap.set(page.section, []);
+        if (!sectionsMap.has(page.mappedSection)) {
+            sectionsMap.set(page.mappedSection, []);
         }
-        sectionsMap.get(page.section).push(page);
+        sectionsMap.get(page.mappedSection).push(page);
     });
-
+    
     const uniqueSections = Array.from(sectionsMap.keys());
-
+    
     log(`📊 Found ${uniqueSections.length} sections: ${uniqueSections.join(', ')}`, 'info');
     log(`📄 Total pages: ${pages.length}`, 'info');
-
-    // Disable buttons and enable stop button
+    
+    // Summary tracking
+    const summary = {
+        totalPages: pages.length,
+        successCount: 0,
+        skipCount: 0,
+        failCount: 0,
+        failedPages: []
+    };
+    
     document.getElementById('startBulkProcessBtn').disabled = true;
     document.getElementById('previewDataBtn').disabled = true;
     document.getElementById('stopProcessBtn').disabled = false;
     shouldCancel = false;
-
+    
     try {
         // MAIN LOOP: Process each section
         for (let sectionIndex = 0; sectionIndex < uniqueSections.length; sectionIndex++) {
             if (shouldCancel) throw new Error('Process cancelled by user');
-
+            
             const currentSectionName = uniqueSections[sectionIndex];
             const sectionPages = sectionsMap.get(currentSectionName);
-
+            
             // Filter out Platform pages for this section
-            const pagesToCreate = sectionPages.filter(p => !p.pageType.toLowerCase().includes('platform'));
+            const pagesToCreate = sectionPages.filter(p => {
+                const typeValue = getPageTypeValue(p.pageType);
+                if (!typeValue || typeValue === '0') {
+                    summary.skipCount++;
+                    return false;
+                }
+                return true;
+            });
+            
             const platformPagesSkipped = sectionPages.length - pagesToCreate.length;
-
+            
             if (pagesToCreate.length === 0) {
                 log(`\n⏭️  SKIPPING SECTION "${currentSectionName}" - All pages are Platform type`, 'warning');
                 continue;
             }
-
+            
             log(`\n${'='.repeat(70)}`, 'info');
             log(`SECTION ${sectionIndex + 1}/${uniqueSections.length}: "${currentSectionName}"`, 'info');
             log(`Pages to create: ${pagesToCreate.length} | Platform pages skipped: ${platformPagesSkipped}`, 'info');
             log(`${'='.repeat(70)}`, 'info');
-
+            
             // STEP 1: CREATE SECTION (Local Link with New Inventory)
             log(`\nCreating section "${currentSectionName}"...`, 'info');
-
+            
             const addSectionBtn = document.querySelector('#addSection input[type="button"]');
             if (!addSectionBtn) {
                 throw new Error('Add Section button not found');
             }
-
+            
             addSectionBtn.click();
             log('✓ Clicked Add Section', 'success');
-
-            // Wait for sidebar to open
+            
             await waitForSidebarToOpen();
-
-            // Select Local Link (value 2)
+            
             const pageTypeSelect = document.getElementById('selectPageType');
-            pageTypeSelect.value = '2';
+            pageTypeSelect.value = '2'; // Local Link
             triggerChange(pageTypeSelect);
             log('✓ Selected Local Link', 'success');
-
+            
             await new Promise(resolve => setTimeout(resolve, 500));
-
-            // Select New Inventory (value 1) for section type
+            
             const sectionTypeSelect = document.querySelector('select[name="sectiontypeid"]');
             if (sectionTypeSelect) {
-                sectionTypeSelect.value = '1';
+                sectionTypeSelect.value = '1'; // New Inventory
                 triggerChange(sectionTypeSelect);
                 log('✓ Selected New Inventory', 'success');
             }
-
+            
             await new Promise(resolve => setTimeout(resolve, 500));
-
-            // Enter section name (from Page Section column)
+            
             const titleInput = document.querySelector('input[name="page_name"]');
             if (titleInput) {
                 titleInput.value = currentSectionName;
                 titleInput.dispatchEvent(new Event('input', { bubbles: true }));
                 log(`✓ Entered section name: "${currentSectionName}"`, 'success');
             }
-
+            
             await new Promise(resolve => setTimeout(resolve, 500));
-
-            // Click "Add Page" to create section
+            
             const addPageBtn = document.querySelector('input[type="submit"][value="Add Page"]');
             if (addPageBtn) {
                 addPageBtn.click();
                 log('✓ Section created', 'success');
             }
-
-            // Close any error popups
+            
             await closeErrorPopup();
             await waitForSidebarToClose();
-
-            // Click (Add Page) link in the new section to start adding pages
             await clickAddPageInSection();
-
+            
             // STEP 2: ADD ALL PAGES TO THIS SECTION
             log(`\n--- Adding ${pagesToCreate.length} pages to section "${currentSectionName}" ---`, 'info');
-
+            
             for (let pageIndex = 0; pageIndex < pagesToCreate.length; pageIndex++) {
                 if (shouldCancel) throw new Error('Process cancelled by user');
-
+                
                 const pageData = pagesToCreate[pageIndex];
                 const isLast = (pageIndex === pagesToCreate.length - 1);
                 const isLastSection = (sectionIndex === uniqueSections.length - 1);
-
-                log(`\n  Page ${pageIndex + 1}/${pagesToCreate.length}: ${pageData.pageName}`, 'info');
-
+                
+                log(`\n  Page ${pageIndex + 1}/${pagesToCreate.length}: ${pageData.pageName} (${pageData.pageType})`, 'info');
+                
                 try {
-                    // Determine page type and create accordingly
-                    const pageTypeLower = pageData.pageType.toLowerCase();
-
-                    // SKIP Platform pages
-                    if (pageTypeLower.includes('platform')) {
-                        log(`  ⏭️  SKIPPED (Platform Page)`, 'warning');
-                        continue;
-                    }
-
-                    // Handle different non-Platform page types
-                    if (pageTypeLower.includes('custom content')) {
-                        // Custom Content page
-                        await createCustomContentPage(pageData, isLast && isLastSection);
-                    } else if (pageTypeLower.includes('local link')) {
-                        // Local Link page - treat similar to Custom Content
-                        await createCustomContentPage(pageData, isLast && isLastSection);
-                    } else if (pageTypeLower.includes('custom model research') ||
-                               pageTypeLower.includes('custom iframe')) {
-                        // Custom Model Research Page or Custom Iframe - treat as Custom Content
-                        await createCustomContentPage(pageData, isLast && isLastSection);
-                    } else {
-                        // Default: treat as Custom Content
-                        log(`  ⚠ Unknown type "${pageData.pageType}", treating as Custom Content`, 'warning');
-                        await createCustomContentPage(pageData, isLast && isLastSection);
-                    }
-
+                    // Create page using generic function (handles all types)
+                    await createGenericPage(pageData, isLast && isLastSection);
+                    summary.successCount++;
+                    
                     // After each page (except last of section), click Add Page link to reopen sidebar
                     if (!isLast) {
                         await clickAddPageInSection();
                     }
-
+                    
                 } catch (pageError) {
                     log(`  ⚠ Error: ${pageError.message}`, 'error');
+                    summary.failCount++;
+                    summary.failedPages.push({
+                        name: pageData.pageName,
+                        type: pageData.pageType,
+                        error: pageError.message
+                    });
                 }
             }
-
+            
             log(`\n✓ Completed section "${currentSectionName}"`, 'success');
         }
-
+        
+        // GENERATE SUMMARY REPORT
         log(`\n${'='.repeat(70)}`, 'info');
-        log('🎉 All sections and pages processed successfully!', 'success');
+        log('📊 SUMMARY REPORT', 'info');
         log(`${'='.repeat(70)}`, 'info');
-        alert('✅ Bulk page creation completed!\n\nAll sections created with their respective pages.');
-
+        log(`Total Pages Processed: ${summary.totalPages}`, 'info');
+        log(`✓ Successfully Created: ${summary.successCount}`, 'success');
+        log(`⏭️  Skipped (Platform Pages): ${summary.skipCount}`, 'warning');
+        log(`✗ Failed: ${summary.failCount}`, summary.failCount > 0 ? 'error' : 'info');
+        
+        if (summary.failedPages.length > 0) {
+            log(`\nFailed Pages:`, 'error');
+            summary.failedPages.forEach((page, idx) => {
+                log(`  ${idx + 1}. ${page.name} (${page.type}) - ${page.error}`, 'error');
+            });
+        }
+        
+        log(`${'='.repeat(70)}`, 'info');
+        log('🎉 Process completed!', 'success');
+        log(`${'='.repeat(70)}`, 'info');
+        
+        // Show summary alert
+        let alertMessage = '✅ Bulk page creation completed!\n\n';
+        alertMessage += `📊 Summary:\n`;
+        alertMessage += `Total Pages: ${summary.totalPages}\n`;
+        alertMessage += `✓ Created: ${summary.successCount}\n`;
+        alertMessage += `⏭️ Skipped: ${summary.skipCount}\n`;
+        alertMessage += `✗ Failed: ${summary.failCount}`;
+        
+        if (summary.failedPages.length > 0) {
+            alertMessage += `\n\nFailed Pages:\n`;
+            summary.failedPages.slice(0, 5).forEach((page, idx) => {
+                alertMessage += `${idx + 1}. ${page.name}\n`;
+            });
+            if (summary.failedPages.length > 5) {
+                alertMessage += `... and ${summary.failedPages.length - 5} more`;
+            }
+        }
+        
+        alert(alertMessage);
+        
     } catch (error) {
         if (error.message !== 'Process cancelled by user') {
             log(`\n❌ Error: ${error.message}`, 'error');
             alert('Error: ' + error.message);
+        } else {
+            // Show summary even if cancelled
+            log(`\n📊 Process Cancelled - Partial Summary:`, 'warning');
+            log(`Processed before cancellation: ${summary.successCount} created, ${summary.failCount} failed`, 'info');
         }
     } finally {
-        // Re-enable buttons
+        // Re-enable buttons and HIDE stop button
         document.getElementById('startBulkProcessBtn').disabled = false;
         document.getElementById('previewDataBtn').disabled = false;
         document.getElementById('stopProcessBtn').disabled = true;
+        document.getElementById('stopProcessBtn').style.display = 'none'; // Hide completely
     }
 }
 
