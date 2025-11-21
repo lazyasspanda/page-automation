@@ -521,105 +521,119 @@ const modalHTML = `
     }
 
     // ========================================================================
-    // SECTION 4: MODAL MANAGEMENT
-    // ========================================================================
+// SECTION 4: MODAL MANAGEMENT (FIXED - Update button listener)
+// ========================================================================
 
-    /**
-     * Add "Page Builder" button to admin panel if not already present
-     */
-    function addPageBuilderButton() {
-        if (document.getElementById('pageBuilder')) {
-            return;
-        }
-
-        const adminButtons = document.getElementById('adminButtons');
-
-        if (adminButtons) {
-            const viewDeletedBtn = document.getElementById('viewDeleted');
-
-            if (viewDeletedBtn) {
-                const pageBuilderBtn = document.createElement('button');
-
-                pageBuilderBtn.setAttribute('data-v-7188041b', '');
-                pageBuilderBtn.setAttribute('name', 'pageBuilder');
-                pageBuilderBtn.setAttribute('id', 'pageBuilder');
-                pageBuilderBtn.setAttribute('type', 'button');
-                pageBuilderBtn.className = 'btn btn-success';
-                pageBuilderBtn.textContent = 'Page Builder';
-
-                pageBuilderBtn.addEventListener('click', function() {
-                    openModal();
-                });
-
-                viewDeletedBtn.insertAdjacentElement('afterend', pageBuilderBtn);
-
-                console.log('Page Builder button added successfully');
-            }
-        }
+/**
+ * Add "Page Builder" button to admin panel if not already present
+ */
+function addPageBuilderButton() {
+    if (document.getElementById('pageBuilder')) {
+        return;
     }
 
-    /**
-     * Create modal if not already created and attach event listeners
-     */
-    function createModal() {
-        if (!document.getElementById('pageBuilderModal')) {
-            document.body.insertAdjacentHTML('beforeend', modalHTML);
+    const adminButtons = document.getElementById('adminButtons');
 
-            document.querySelector('.close-modal').addEventListener('click', closeModal);
-            document.getElementById('cancelProcessBtn').addEventListener('click', closeModal);
-            document.getElementById('previewDataBtn').addEventListener('click', previewData);
-            document.getElementById('startBulkProcessBtn').addEventListener('click', function() {
-    // Show stop button when process starts
-    document.getElementById('stopProcessBtn').style.display = 'block';
-    startBulkProcess();
-});
-            document.getElementById('stopProcessBtn').addEventListener('click', stopProcess);
-                        // Update check button listener
-            document.getElementById('checkUpdatesBtn').addEventListener('click', function() {
-                const btn = document.getElementById('checkUpdatesBtn');
+    if (adminButtons) {
+        const viewDeletedBtn = document.getElementById('viewDeleted');
 
-                // If update is ready, open the link
-                if (btn.getAttribute('data-update-ready') === 'true') {
-                    console.log('[Update] Opening update link');
-                    window.open(UPDATE_CONFIG.GITHUB_URL, '_blank');
-                    return;
-                }
+        if (viewDeletedBtn) {
+            const pageBuilderBtn = document.createElement('button');
 
-                // Otherwise, perform manual check
-                checkForUpdates();
+            pageBuilderBtn.setAttribute('data-v-7188041b', '');
+            pageBuilderBtn.setAttribute('name', 'pageBuilder');
+            pageBuilderBtn.setAttribute('id', 'pageBuilder');
+            pageBuilderBtn.setAttribute('type', 'button');
+            pageBuilderBtn.className = 'btn btn-success';
+            pageBuilderBtn.textContent = 'Page Builder';
+
+            pageBuilderBtn.addEventListener('click', function() {
+                openModal();
             });
 
+            viewDeletedBtn.insertAdjacentElement('afterend', pageBuilderBtn);
+
+            console.log('Page Builder button added successfully');
         }
     }
+}
 
-    /**
-     * Open modal and reset state
-     */
-    function openModal() {
-        createModal();
-        document.getElementById('pageBuilderModal').style.display = 'block';
-        document.getElementById('progressLog').innerHTML = '';
-        document.getElementById('progressLog').style.display = 'none';
-        document.getElementById('startBulkProcessBtn').disabled = true;
-        shouldCancel = false;
-        document.getElementById('stopProcessBtn').disabled = true;
-    }
+/**
+ * Create modal if not already created and attach event listeners
+ */
+function createModal() {
+    if (!document.getElementById('pageBuilderModal')) {
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
 
-    /**
-     * Close modal
-     */
-    function closeModal() {
-        document.getElementById('pageBuilderModal').style.display = 'none';
-    }
+        // Close modal listeners
+        document.querySelector('.close-modal').addEventListener('click', closeModal);
+        document.getElementById('cancelProcessBtn').addEventListener('click', closeModal);
 
-    /**
-     * Stop automation process by setting cancel flag
-     */
-    function stopProcess() {
-        shouldCancel = true;
-        document.getElementById('stopProcessBtn').disabled = true;
-        log('⛔ Process stopped by user', 'error');
+        // Preview data button
+        document.getElementById('previewDataBtn').addEventListener('click', previewData);
+
+        // Start automation button
+        document.getElementById('startBulkProcessBtn').addEventListener('click', function() {
+            // Show stop button when process starts
+            document.getElementById('stopProcessBtn').style.display = 'block';
+            startBulkProcess();
+        });
+
+        // Stop process button
+        document.getElementById('stopProcessBtn').addEventListener('click', stopProcess);
+
+        // *** FIXED: Check for updates button listener ***
+        document.getElementById('checkUpdatesBtn').addEventListener('click', function() {
+            console.log('[Update] Check button clicked'); // Debug log
+
+            const btn = document.getElementById('checkUpdatesBtn');
+
+            // If update is ready, open the link
+            if (btn.getAttribute('data-update-ready') === 'true') {
+                console.log('[Update] Opening update link');
+                window.open(UPDATE_CONFIG.GITHUB_URL, '_blank');
+                return;
+            }
+
+            // Otherwise, perform manual check
+            console.log('[Update] Running manual check');
+            checkForUpdates();
+        });
+
+        console.log('[Modal] All event listeners attached');
     }
+}
+
+/**
+ * Open modal and reset state
+ */
+function openModal() {
+    createModal();
+    document.getElementById('pageBuilderModal').style.display = 'block';
+    document.getElementById('progressLog').innerHTML = '';
+    document.getElementById('progressLog').style.display = 'none';
+    document.getElementById('startBulkProcessBtn').disabled = true;
+    shouldCancel = false;
+    document.getElementById('stopProcessBtn').disabled = true;
+    document.getElementById('stopProcessBtn').style.display = 'none'; // Hidden initially
+}
+
+/**
+ * Close modal
+ */
+function closeModal() {
+    document.getElementById('pageBuilderModal').style.display = 'none';
+}
+
+/**
+ * Stop automation process by setting cancel flag
+ */
+function stopProcess() {
+    shouldCancel = true;
+    document.getElementById('stopProcessBtn').disabled = true;
+    log('⛔ Process stopped by user', 'error');
+}
+
 
  // ========================================================================
 // SECTION 5: SIDEBAR & FORM DETECTION FUNCTIONS (UPDATED - Silent mode)
@@ -936,6 +950,27 @@ function previewData() {
         return;
     }
 
+    // === LOG EXISTING SECTIONS ON PAGE (before processing) ===
+const existingSectionsForLog = getExistingSectionsWithAddButtons() || [];
+log('====== EXISTING SITE SECTIONS FOUND ON PAGE ======', 'info');
+existingSectionsForLog.forEach(sec => {
+    // Figure out matching standard keyword, if any
+    let matchedKeyword = null;
+    for (const key of STANDARD_SECTIONS) {
+        if (sec.name && sec.name.toLowerCase().includes(key.toLowerCase())) {
+            matchedKeyword = key;
+            break;
+        }
+    }
+    if (matchedKeyword) {
+        log(`🟢 Section: "${sec.name}"   ↔ matches: "${matchedKeyword}"`, 'info');
+    } else {
+        log(`⚪ Section: "${sec.name}"`, 'info');
+    }
+});
+log('===============================================', 'info');
+
+
     // Count unique sections
     const uniqueSections = [...new Set(pages.map(p => p.section))];
 
@@ -958,12 +993,11 @@ function previewData() {
 
 
 // ========================================================================
-// SECTION 10: MAIN AUTOMATION PROCESS (UPDATED - Section Mapping + Summary)
+// SECTION 10: MAIN AUTOMATION PROCESS (STANDARD SECTION RE-USE + SUMMARY)
 // ========================================================================
 
 /**
  * Section mapping: Child sections → Parent sections
- * These sections will NOT create new sections, but add pages to parent sections
  */
 const sectionMergeMapping = {
     'model research': 'About Us',
@@ -974,8 +1008,6 @@ const sectionMergeMapping = {
 
 /**
  * Get the actual section name to use (handles merging)
- * @param {string} sectionName - Section name from Excel
- * @returns {string} Actual section name to use
  */
 function getMappedSectionName(sectionName) {
     const normalized = sectionName.toLowerCase().trim();
@@ -983,11 +1015,80 @@ function getMappedSectionName(sectionName) {
 }
 
 /**
+ * STANDARD SECTIONS (in priority order)
+ * Matching is case-insensitive, by substring/contains
+ */
+const STANDARD_SECTIONS = [
+    "Specials",
+    "New",
+    "Used",
+    "Service",
+    "About Us",
+    "Finance"
+];
+
+/**
+ /**
+ * Scan the DOM to capture all existing sections (as shown in CMS table rows)
+ * Returns an array of { name, addBtnElement }
+ */
+function getExistingSectionsWithAddButtons() {
+    const results = [];
+    // Look for rows with class="sectionheader"
+    document.querySelectorAll('tr.sectionheader').forEach(row => {
+        // Get <b> tag inside (section name)
+        const bold = row.querySelector('b');
+        const sectionName = bold && bold.textContent.trim();
+        // Get add page link with id="addPage-..."
+        const addBtn = row.querySelector('a[id^="addPage-"]');
+        if (sectionName && addBtn) {
+            results.push({
+                name: sectionName,
+                addBtnElement: addBtn
+            });
+        }
+    });
+    return results;
+}
+
+/**
+ * Returns the best matching already-existing section according to priorities
+ * Returns {name, addBtnElement} or null if not found
+ */
+function findMatchingExistingSection(mappedSectionName, standardSectionList, existingSections) {
+    // Determine priority: if mappedSectionName is one of the standards, use that priority first
+    // Lower in the list = lower priority
+    let bestMatch = null;
+    let bestPriority = standardSectionList.length + 1;
+    for (const section of existingSections) {
+        for (let p = 0; p < standardSectionList.length; p++) {
+            const keyword = standardSectionList[p].toLowerCase();
+            const sectionNameNorm = section.name.toLowerCase();
+            // Prioritize mapped section itself!
+            if (sectionNameNorm.includes(mappedSectionName.toLowerCase())) {
+                if (p < bestPriority) {
+                    bestMatch = section;
+                    bestPriority = p - 0.5; // best possible (before other keyword hits)
+                }
+            }
+            // Next, see if section matches any standard keyword by substring
+            else if (sectionNameNorm.includes(keyword)) {
+                if (p < bestPriority) {
+                    bestMatch = section;
+                    bestPriority = p;
+                }
+            }
+        }
+    }
+    return bestMatch;
+}
+
+/**
  * Main automation orchestration function
- * Groups pages by section → Creates each section → Adds pages to section
- * Supports section merging and generates summary report
  */
 async function startBulkProcess() {
+
+
     const rawData = document.getElementById('excelData').value;
 
     if (!rawData.trim()) {
@@ -1002,12 +1103,12 @@ async function startBulkProcess() {
         return;
     }
 
-    // Apply section mapping to pages
+    // Apply section mapping
     pages.forEach(page => {
         page.mappedSection = getMappedSectionName(page.section);
     });
 
-    // Group pages by MAPPED section
+    // Group by mapped section
     const sectionsMap = new Map();
     pages.forEach(page => {
         if (!sectionsMap.has(page.mappedSection)) {
@@ -1027,129 +1128,167 @@ async function startBulkProcess() {
         successCount: 0,
         skipCount: 0,
         failCount: 0,
-        failedPages: []
+        failedPages: [],
+        reusedSections: [],
+        createdSections: []
     };
 
     document.getElementById('startBulkProcessBtn').disabled = true;
     document.getElementById('previewDataBtn').disabled = true;
     document.getElementById('stopProcessBtn').disabled = false;
+    document.getElementById('stopProcessBtn').style.display = 'block';
     shouldCancel = false;
 
     try {
-        // MAIN LOOP: Process each section
-        for (let sectionIndex = 0; sectionIndex < uniqueSections.length; sectionIndex++) {
-            if (shouldCancel) throw new Error('Process cancelled by user');
+       // MAIN LOOP: Process each section
+for (let sectionIndex = 0; sectionIndex < uniqueSections.length; sectionIndex++) {
+    if (shouldCancel) throw new Error('Process cancelled by user');
+    const currentSectionName = uniqueSections[sectionIndex];
+    const sectionPages = sectionsMap.get(currentSectionName);
 
-            const currentSectionName = uniqueSections[sectionIndex];
-            const sectionPages = sectionsMap.get(currentSectionName);
+    // Remove Platform pages
+    const pagesToCreate = sectionPages.filter(p => {
+        const typeValue = getPageTypeValue(p.pageType);
+        if (!typeValue || typeValue === '0') {
+            summary.skipCount++;
+            return false;
+        }
+        return true;
+    });
 
-            // Filter out Platform pages for this section
-            const pagesToCreate = sectionPages.filter(p => {
-                const typeValue = getPageTypeValue(p.pageType);
-                if (!typeValue || typeValue === '0') {
-                    summary.skipCount++;
-                    return false;
-                }
-                return true;
-            });
+    if (pagesToCreate.length === 0) {
+        log(`\n⏭️  SKIPPING SECTION "${currentSectionName}" - All pages are Platform type`, 'warning');
+        continue;
+    }
 
-            const platformPagesSkipped = sectionPages.length - pagesToCreate.length;
+    // *** ALWAYS SCAN THE PAGE (fresh) for existing sections at the START of this section! ***
+    const existingSections = getExistingSectionsWithAddButtons() || [];
 
-            if (pagesToCreate.length === 0) {
-                log(`\n⏭️  SKIPPING SECTION "${currentSectionName}" - All pages are Platform type`, 'warning');
-                continue;
-            }
-
+            let usedExisting = false;
+    let matchedSectionInfo = null;
+    if (
+        STANDARD_SECTIONS.map(e => e.toLowerCase()).includes(currentSectionName.toLowerCase()) ||
+        Object.values(sectionMergeMapping).map(e => e.toLowerCase()).includes(currentSectionName.toLowerCase())
+    ) {
+        matchedSectionInfo = findMatchingExistingSection(currentSectionName, STANDARD_SECTIONS, existingSections);
+        if (matchedSectionInfo) usedExisting = true;
+    }
             log(`\n${'='.repeat(70)}`, 'info');
             log(`SECTION ${sectionIndex + 1}/${uniqueSections.length}: "${currentSectionName}"`, 'info');
-            log(`Pages to create: ${pagesToCreate.length} | Platform pages skipped: ${platformPagesSkipped}`, 'info');
+            log(`Pages to create: ${pagesToCreate.length}`, 'info');
             log(`${'='.repeat(70)}`, 'info');
 
-            // STEP 1: CREATE SECTION (Local Link with New Inventory)
-            log(`\nCreating section "${currentSectionName}"...`, 'info');
-
-            const addSectionBtn = document.querySelector('#addSection input[type="button"]');
-            if (!addSectionBtn) {
-                throw new Error('Add Section button not found');
+            // Track section (reused/new) for summary
+            if (usedExisting) {
+                summary.reusedSections.push(matchedSectionInfo.name);
+                log(`🟢 Re-using existing section: "${matchedSectionInfo.name}"`, 'info');
+            } else {
+                summary.createdSections.push(currentSectionName);
+                log(`🟠 Creating new section: "${currentSectionName}"`, 'info');
             }
 
-            addSectionBtn.click();
-            log('✓ Clicked Add Section', 'success');
+            // --- START PAGE ADDING ---
+            if (usedExisting && matchedSectionInfo && matchedSectionInfo.addBtnElement) {
+                // Go to existing section and click its Add Page
+                matchedSectionInfo.addBtnElement.click();
+                await waitForSidebarToOpen();
 
-            await waitForSidebarToOpen();
+                // Add ALL pages to this section
+                for (let pageIndex = 0; pageIndex < pagesToCreate.length; pageIndex++) {
+                    if (shouldCancel) throw new Error('Process cancelled by user');
 
-            const pageTypeSelect = document.getElementById('selectPageType');
-            pageTypeSelect.value = '2'; // Local Link
-            triggerChange(pageTypeSelect);
-            log('✓ Selected Local Link', 'success');
+                    const pageData = pagesToCreate[pageIndex];
+                    const isLast = (pageIndex === pagesToCreate.length - 1);
+                    const isLastSection = (sectionIndex === uniqueSections.length - 1);
 
-            await new Promise(resolve => setTimeout(resolve, 500));
+                    log(`\n  Page ${pageIndex + 1}/${pagesToCreate.length}: ${pageData.pageName} (${pageData.pageType})`, 'info');
+                    try {
+                        await createGenericPage(pageData, isLast && isLastSection);
+                        summary.successCount++;
 
-            const sectionTypeSelect = document.querySelector('select[name="sectiontypeid"]');
-            if (sectionTypeSelect) {
-                sectionTypeSelect.value = '1'; // New Inventory
-                triggerChange(sectionTypeSelect);
-                log('✓ Selected New Inventory', 'success');
-            }
-
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            const titleInput = document.querySelector('input[name="page_name"]');
-            if (titleInput) {
-                titleInput.value = currentSectionName;
-                titleInput.dispatchEvent(new Event('input', { bubbles: true }));
-                log(`✓ Entered section name: "${currentSectionName}"`, 'success');
-            }
-
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            const addPageBtn = document.querySelector('input[type="submit"][value="Add Page"]');
-            if (addPageBtn) {
-                addPageBtn.click();
-                log('✓ Section created', 'success');
-            }
-
-            await closeErrorPopup();
-            await waitForSidebarToClose();
-            await clickAddPageInSection();
-
-            // STEP 2: ADD ALL PAGES TO THIS SECTION
-            log(`\n--- Adding ${pagesToCreate.length} pages to section "${currentSectionName}" ---`, 'info');
-
-            for (let pageIndex = 0; pageIndex < pagesToCreate.length; pageIndex++) {
-                if (shouldCancel) throw new Error('Process cancelled by user');
-
-                const pageData = pagesToCreate[pageIndex];
-                const isLast = (pageIndex === pagesToCreate.length - 1);
-                const isLastSection = (sectionIndex === uniqueSections.length - 1);
-
-                log(`\n  Page ${pageIndex + 1}/${pagesToCreate.length}: ${pageData.pageName} (${pageData.pageType})`, 'info');
-
-                try {
-                    // Create page using generic function (handles all types)
-                    await createGenericPage(pageData, isLast && isLastSection);
-                    summary.successCount++;
-
-                    // After each page (except last of section), click Add Page link to reopen sidebar
-                    if (!isLast) {
-                        await clickAddPageInSection();
+                        if (!isLast) {
+                            // Re-click Add Page for the same section
+                            matchedSectionInfo.addBtnElement.click();
+                            await waitForSidebarToOpen();
+                        }
+                    } catch (pageError) {
+                        log(`  ⚠ Error: ${pageError.message}`, 'error');
+                        summary.failCount++;
+                        summary.failedPages.push({
+                            name: pageData.pageName,
+                            type: pageData.pageType,
+                            error: pageError.message
+                        });
                     }
+                }
 
-                } catch (pageError) {
-                    log(`  ⚠ Error: ${pageError.message}`, 'error');
-                    summary.failCount++;
-                    summary.failedPages.push({
-                        name: pageData.pageName,
-                        type: pageData.pageType,
-                        error: pageError.message
-                    });
+            } else {
+                // New section logic
+                log(`\nCreating section "${currentSectionName}"...`, 'info');
+                const addSectionBtn = document.querySelector('#addSection input[type="button"]');
+                if (!addSectionBtn) throw new Error('Add Section button not found');
+                addSectionBtn.click(); log('✓ Clicked Add Section', 'success');
+                await waitForSidebarToOpen();
+
+                const pageTypeSelect = document.getElementById('selectPageType');
+                pageTypeSelect.value = '2'; // Local Link
+                triggerChange(pageTypeSelect); log('✓ Selected Local Link', 'success');
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                const sectionTypeSelect = document.querySelector('select[name="sectiontypeid"]');
+                if (sectionTypeSelect) {
+                    sectionTypeSelect.value = '1'; // New Inventory
+                    triggerChange(sectionTypeSelect);
+                    log('✓ Selected New Inventory', 'success');
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                const titleInput = document.querySelector('input[name="page_name"]');
+                if (titleInput) {
+                    titleInput.value = currentSectionName;
+                    titleInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    log(`✓ Entered section name: "${currentSectionName}"`, 'success');
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                const addPageBtn = document.querySelector('input[type="submit"][value="Add Page"]');
+                if (addPageBtn) {
+                    addPageBtn.click();
+                    log('✓ Section created', 'success');
+                }
+                await closeErrorPopup();
+                await waitForSidebarToClose();
+                await clickAddPageInSection();
+
+                // Add all pages to new section
+                for (let pageIndex = 0; pageIndex < pagesToCreate.length; pageIndex++) {
+                    if (shouldCancel) throw new Error('Process cancelled by user');
+                    const pageData = pagesToCreate[pageIndex];
+                    const isLast = (pageIndex === pagesToCreate.length - 1);
+                    const isLastSection = (sectionIndex === uniqueSections.length - 1);
+
+                    log(`\n  Page ${pageIndex + 1}/${pagesToCreate.length}: ${pageData.pageName} (${pageData.pageType})`, 'info');
+                    try {
+                        await createGenericPage(pageData, isLast && isLastSection);
+                        summary.successCount++;
+                        if (!isLast) await clickAddPageInSection();
+                    } catch (pageError) {
+                        log(`  ⚠ Error: ${pageError.message}`, 'error');
+                        summary.failCount++;
+                        summary.failedPages.push({
+                            name: pageData.pageName,
+                            type: pageData.pageType,
+                            error: pageError.message
+                        });
+                    }
                 }
             }
-
             log(`\n✓ Completed section "${currentSectionName}"`, 'success');
         }
 
-        // GENERATE SUMMARY REPORT
+        // --- SUMMARY REPORT ---
         log(`\n${'='.repeat(70)}`, 'info');
         log('📊 SUMMARY REPORT', 'info');
         log(`${'='.repeat(70)}`, 'info');
@@ -1157,36 +1296,39 @@ async function startBulkProcess() {
         log(`✓ Successfully Created: ${summary.successCount}`, 'success');
         log(`⏭️  Skipped (Platform Pages): ${summary.skipCount}`, 'warning');
         log(`✗ Failed: ${summary.failCount}`, summary.failCount > 0 ? 'error' : 'info');
-
+        if (summary.reusedSections.length > 0)
+            log('🟢 Reused existing sections: ' + summary.reusedSections.join(', '), 'info');
+        if (summary.createdSections.length > 0)
+            log('🟠 Newly created sections: ' + summary.createdSections.join(', '), 'info');
         if (summary.failedPages.length > 0) {
             log(`\nFailed Pages:`, 'error');
             summary.failedPages.forEach((page, idx) => {
                 log(`  ${idx + 1}. ${page.name} (${page.type}) - ${page.error}`, 'error');
             });
         }
-
         log(`${'='.repeat(70)}`, 'info');
         log('🎉 Process completed!', 'success');
         log(`${'='.repeat(70)}`, 'info');
 
-        // Show summary alert
+        // ALERT summary for user
         let alertMessage = '✅ Bulk page creation completed!\n\n';
         alertMessage += `📊 Summary:\n`;
         alertMessage += `Total Pages: ${summary.totalPages}\n`;
         alertMessage += `✓ Created: ${summary.successCount}\n`;
         alertMessage += `⏭️ Skipped: ${summary.skipCount}\n`;
         alertMessage += `✗ Failed: ${summary.failCount}`;
-
+        if (summary.reusedSections.length > 0)
+            alertMessage += `\n\n🟢 Existing sections used: ${summary.reusedSections.join(', ')}`;
+        if (summary.createdSections.length > 0)
+            alertMessage += `\n🟠 Newly created: ${summary.createdSections.join(', ')}`;
         if (summary.failedPages.length > 0) {
             alertMessage += `\n\nFailed Pages:\n`;
             summary.failedPages.slice(0, 5).forEach((page, idx) => {
                 alertMessage += `${idx + 1}. ${page.name}\n`;
             });
-            if (summary.failedPages.length > 5) {
+            if (summary.failedPages.length > 5)
                 alertMessage += `... and ${summary.failedPages.length - 5} more`;
-            }
         }
-
         alert(alertMessage);
 
     } catch (error) {
@@ -1194,18 +1336,17 @@ async function startBulkProcess() {
             log(`\n❌ Error: ${error.message}`, 'error');
             alert('Error: ' + error.message);
         } else {
-            // Show summary even if cancelled
             log(`\n📊 Process Cancelled - Partial Summary:`, 'warning');
             log(`Processed before cancellation: ${summary.successCount} created, ${summary.failCount} failed`, 'info');
         }
     } finally {
-        // Re-enable buttons and HIDE stop button
         document.getElementById('startBulkProcessBtn').disabled = false;
         document.getElementById('previewDataBtn').disabled = false;
         document.getElementById('stopProcessBtn').disabled = true;
-        document.getElementById('stopProcessBtn').style.display = 'none'; // Hide completely
+        document.getElementById('stopProcessBtn').style.display = 'none';
     }
 }
+
 
     // ========================================================================
     // SECTION 11: INITIALIZATION & EVENT LISTENERS
